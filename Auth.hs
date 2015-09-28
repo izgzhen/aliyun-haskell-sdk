@@ -1,6 +1,7 @@
 module Auth (
   hmacSha1
 , base64
+, md5
 , Secret(..)
 , Message(..)
 , AkId(..)
@@ -11,6 +12,7 @@ import Data.ByteString.Char8 as BC
 import Data.ByteString as B
 import Data.HMAC
 import Data.Word (Word8)
+import qualified Data.Digest.MD5 as M
 
 
 newtype Secret  = Secret  { unSecret  :: String } deriving (Eq, Show)
@@ -26,3 +28,5 @@ base64 = BC.unpack . BB.encode . B.pack
 
 newtype AkId = AkId { unAkId :: String } deriving (Eq, Show)
 
+md5 :: B.ByteString -> B.ByteString
+md5 = B.pack . M.hash . B.unpack
