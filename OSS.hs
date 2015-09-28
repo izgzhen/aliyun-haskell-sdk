@@ -1,39 +1,51 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, FlexibleContexts #-}
 
 module OSS (
-  Content(..)
-, constructSign
+  Content
+, packageData
 , OSSHeader
 , OSSResource(..)
 , SubResource
-, getHTTPDate
+, canonicalize
 ) where
 
 import Auth
 import Config
+import HTTP
 
+import Network.URI
 import qualified Data.ByteString.Char8 as BC
+import qualified Data.ByteString as B
 import Network.HTTP.Base
-import Network.HTTP.Date
+import Network.HTTP.Headers
 import Data.Char
 import Data.List
 import System.FilePath
 import qualified Data.Map as M
-import System.Posix.Time
-import Data.String (IsString(..))
+import Text.Html (Html)
 
-data Content = Content {
-  _text :: BC.ByteString
-, _type :: String
-} deriving (Eq, Show)
+class Content a where
+    _md5  :: a -> BC.ByteString
+    _type :: a -> String
+    _length :: a -> Int
+
+instance Content String where
+    _md5 s  = md5 (BC.pack s)
+    _type s = "text/plain"
+    _length s = BC.length $ BC.pack s
 
 
-constructSign :: RequestMethod -> Content -> Config -> HTTPDate -> [OSSHeader] -> OSSResource -> String
+instance Content Html where
+    _md5 html = _md5 $ show html
+    _type s = "text/html"
+    _length s = BC.length $ BC.pack (show s)
+
+constructSign :: Content a => RequestMethod -> a -> Config -> HTTPDate -> [OSSHeader] -> OSSResource -> String
 constructSign verb content conf date ossHeaders resource =
-    base64 (hmacSha1 (_akSec conf) (Message $ BC.pack plain))
+    "OSS " ++ show (_akId conf) ++ ":" ++ base64 (hmacSha1 (_akSec conf) (Message $ BC.pack plain))
     where
-        plain = show verb     ++ "\n" ++
-                BC.unpack (md5 (_text content)) ++ "\n" ++
+        plain = show verb ++ "\n" ++
+                (base64 . B.unpack $ _md5 content) ++ "\n" ++
                 _type content ++ "\n" ++
                 (BC.unpack (formatHTTPDate date)) ++ "\n" ++
                 canonicalize ossHeaders ++
@@ -75,13 +87,30 @@ instance Canonicalizable OSSResource where
             p'' (k, Nothing) = k
             p'' (k, Just v)  = k ++ "=" ++ v
 
-getHTTPDate :: IO HTTPDate
-getHTTPDate = epochTimeToHTTPDate <$> epochTime
+toHeader :: OSSHeader -> Header
+toHeader (k, v) = mkHeader (HdrCustom k) v
+
+packageData :: Content a => a -> RegionId -> Config -> RequestMethod -> [OSSHeader] -> OSSResource -> String -> IO (Request a)
+packageData content region config verb ossheaders ossresource bucketName = do
+    date <- getHTTPDate
+    let s = (dropWhile (/='/') (tail $ canonicalize ossresource))
+    let Just uri = parseURIReference s
+
+    let (Bucket bucketName _) = ossresource
+
+    let sign = constructSign verb content config date ossheaders ossresource
+
+    let headers = [ mkHeader HdrAuthorization sign
+                  , mkHeader HdrContentMD5 (base64 . B.unpack $ _md5 content)
+                  , mkHeader HdrContentType $ _type content
+                  , mkHeader HdrExpect "100-Continue"
+                  , mkHeader HdrContentLength $ show (_length content)
+                  , mkHeader HdrDate . BC.unpack $ formatHTTPDate date
+                  , mkHeader HdrHost (bucketName ++ ".oss-" ++ show region ++ ".aliyuncs.com") ]  ++ map toHeader ossheaders
 
 
+    -- let Just uri = parseURI ("http://" ++ bucketName ++ ".oss-" ++ show region ++ ".aliyuncs.com")
 
-instance IsString HTTPDate where
-    fromString s = case parseHTTPDate (BC.pack s) of
-                        Just d -> d
-                        Nothing -> defaultHTTPDate
+    return (Request uri verb headers content)
+
 
