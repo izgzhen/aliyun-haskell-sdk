@@ -1,9 +1,10 @@
 -- Call Aliyun APIs in Haskell, experimental
 
-module API where
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+module API (
+    getURL
+) where
 
-import Network.HTTP
 import Data.Time.Format
 import Data.Time.Clock
 import Data.ByteString.Char8 as BC
@@ -15,12 +16,13 @@ import Data.List (sortBy)
 
 import Auth
 import HTTP
+import Config
 
-params time akid nouce = [
+params time akid nouce action regionId = [
     ("AccessKeyId", unAkId akid),
-    ("Action", "DescribeRegions"),
+    ("Action", action),
     ("Format", "xml"),
-    ("RegionId", "cn-shenzhen"),
+    ("RegionId", regionId),
     ("SignatureMethod", "HMAC-SHA1"),
     ("SignatureNonce", nouce),
     ("SignatureVersion", "1.0"),
@@ -46,13 +48,16 @@ getTime = do
     let time = formatTime defaultTimeLocale format utcTime
     return time
 
-getURL :: URL -> AkId -> Secret -> IO URL
-getURL baseURL akid aksec = do
+getURL :: Config -> RegionId -> URL -> String -> IO URL
+getURL config rid baseURL action = do
+    let akid = _akId config
+    let akSec = _akSec config
     time <- getTime
     nouce <- show <$> uuid
-    let aksec' = Secret (unSecret aksec ++ "&")
-    let sign = constructSign (params time akid nouce)
-    let sig = base64 $ hmacSha1 aksec' sign
-    return $ constructQuery baseURL (params time akid nouce ++ [("Signature", sig)])
+    let akSec' = Secret (unSecret akSec ++ "&")
+    let table = params time akid nouce action (show rid)
+    let sign = constructSign table
+    let sig = base64 $ hmacSha1 akSec' sign
+    return $ constructQuery baseURL (table ++ [("Signature", sig)])
  
  
