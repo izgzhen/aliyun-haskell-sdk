@@ -1,15 +1,26 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, FlexibleContexts #-}
 
-module OSS where
+module OSS (
+  Content(..)
+, constructSign
+, OSSHeader
+, OSSResource(..)
+, SubResource
+, getHTTPDate
+) where
+
+import Auth
+import Config
 
 import qualified Data.ByteString.Char8 as BC
--- import qualified Data.ByteString as BS
-import Auth
-import Network.HTTP.Base (RequestMethod)
+import Network.HTTP.Base
+import Network.HTTP.Date
 import Data.Char
 import Data.List
 import System.FilePath
 import qualified Data.Map as M
+import System.Posix.Time
+import Data.String (IsString(..))
 
 data Content = Content {
   _text :: BC.ByteString
@@ -17,13 +28,14 @@ data Content = Content {
 } deriving (Eq, Show)
 
 
-constructSign :: RequestMethod -> Content -> Secret -> Int -> [OSSHeader] -> OSSResource -> String
-constructSign verb content secret expires ossHeaders resource = base64 (hmacSha1 secret (Message $ BC.pack plain))
+constructSign :: RequestMethod -> Content -> Config -> HTTPDate -> [OSSHeader] -> OSSResource -> String
+constructSign verb content conf date ossHeaders resource =
+    base64 (hmacSha1 (_akSec conf) (Message $ BC.pack plain))
     where
         plain = show verb     ++ "\n" ++
                 BC.unpack (md5 (_text content)) ++ "\n" ++
                 _type content ++ "\n" ++
-                show expires  ++ "\n" ++
+                (BC.unpack (formatHTTPDate date)) ++ "\n" ++
                 canonicalize ossHeaders ++
                 canonicalize resource
 
@@ -53,7 +65,7 @@ instance Canonicalizable [OSSHeader] where
                 Nothing -> M.insert k [v] hs
 
 instance Canonicalizable OSSResource where
-    canonicalize (Bucket bucketName maybeObj) = "" </> bucketName </> p maybeObj
+    canonicalize (Bucket bucketName maybeObj) = "/" ++ bucketName </> p maybeObj
         where
             p Nothing = ""
             p (Just (objName, maybeSubResource)) = objName ++ p' maybeSubResource
@@ -63,6 +75,13 @@ instance Canonicalizable OSSResource where
             p'' (k, Nothing) = k
             p'' (k, Just v)  = k ++ "=" ++ v
 
+getHTTPDate :: IO HTTPDate
+getHTTPDate = epochTimeToHTTPDate <$> epochTime
 
 
+
+instance IsString HTTPDate where
+    fromString s = case parseHTTPDate (BC.pack s) of
+                        Just d -> d
+                        Nothing -> defaultHTTPDate
 
