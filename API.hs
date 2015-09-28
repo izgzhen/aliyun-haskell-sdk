@@ -2,7 +2,8 @@
 
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 module API (
-    getURL
+  getURL
+, getRegion
 ) where
 
 import Data.Time.Format
@@ -17,18 +18,6 @@ import Data.List (sortBy)
 import Auth
 import HTTP
 import Config
-
-params time akid nouce action regionId = [
-    ("AccessKeyId", unAkId akid),
-    ("Action", action),
-    ("Format", "xml"),
-    ("RegionId", regionId),
-    ("SignatureMethod", "HMAC-SHA1"),
-    ("SignatureNonce", nouce),
-    ("SignatureVersion", "1.0"),
-    ("Timestamp", time),
-    ("Version", "2014-05-26")
-    ]
 
 sortTable = sortBy (\(k, _) (k', _) -> compare k k')
 
@@ -48,16 +37,30 @@ getTime = do
     let time = formatTime defaultTimeLocale format utcTime
     return time
 
-getURL :: Config -> RegionId -> URL -> String -> IO URL
-getURL config rid baseURL action = do
+contantParams =
+    [("Format", "xml"),
+     ("SignatureMethod", "HMAC-SHA1"),
+     ("SignatureVersion", "1.0")]
+
+getURL :: Config -> RegionId -> URL -> String -> String -> [(String, String)] -> IO URL
+getURL config rid baseURL action version params = do
     let akid = _akId config
     let akSec = _akSec config
     time <- getTime
     nouce <- show <$> uuid
     let akSec' = Secret (unSecret akSec ++ "&")
-    let table = params time akid nouce action (show rid)
-    let sign = constructSign table
+    let params' = params ++ [ ("RegionId", show rid)
+                            , ("Action", action)
+                            , ("SignatureNonce", nouce)
+                            , ("Timestamp", time)
+                            , ("AccessKeyId", unAkId akid)
+                            , ("Version", version) ]
+                         ++ contantParams
+    let sign = constructSign params'
     let sig = base64 $ hmacSha1 akSec' sign
-    return $ constructQuery baseURL (table ++ [("Signature", sig)])
- 
- 
+    return $ constructQuery baseURL (params' ++ [("Signature", sig)])
+
+
+-- A Hacky Parser
+getRegion config =  Prelude.head . _regionId . Prelude.head $  _ecses config
+

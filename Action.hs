@@ -15,3 +15,11 @@ callAPI config action = do
     qs <- getQueryString action config
     httpsRequest qs
 
+class Param a where
+    stringify :: a -> [(String, String)]
+
+instance Param a => Param (Maybe a) where
+    stringify Nothing = []
+    stringify (Just p) = stringify p
+
+

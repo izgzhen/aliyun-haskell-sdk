@@ -19,8 +19,6 @@ data ECSRequest = DescribeRegions
 
 
 instance Action ECSRequest where
-    -- getURL :: ECSRequest -> Config -> URL
-    getQueryString DescribeRegions config = getURL config (getECSRegion config) (URL "https://ecs.aliyuncs.com/") "DescribeRegions"
+    getQueryString DescribeRegions config =
+        getURL config (getRegion config) (URL "https://ecs.aliyuncs.com/") "DescribeRegions" "2014-05-26" []
 
-
-getECSRegion config =  head . _regionId . head $  _ecses config
