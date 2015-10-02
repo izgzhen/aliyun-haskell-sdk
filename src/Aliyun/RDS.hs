@@ -1,10 +1,10 @@
-module RDS where
+module Aliyun.RDS where
 
 
-import Action
-import HTTP
-import Auth
-import API
+import Aliyun.Action
+import Aliyun.HTTP
+import Aliyun.Auth
+import Aliyun.API
 
 -- data Engine = MySQL
 --             | SQLServer

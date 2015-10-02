@@ -1,7 +1,7 @@
 -- Call Aliyun APIs in Haskell, experimental
 
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
-module API (
+module Aliyun.API (
   getURL
 , getRegion
 ) where
@@ -15,9 +15,9 @@ import System.UUID.V4
 import Data.String.Utils
 import Data.List (sortBy)
 
-import Auth
-import HTTP
-import Config
+import Aliyun.Auth
+import Aliyun.HTTP
+import Aliyun.Config
 
 sortTable = sortBy (\(k, _) (k', _) -> compare k k')
 

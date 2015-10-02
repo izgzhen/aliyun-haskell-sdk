@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, FlexibleContexts #-}
 
-module OSS (
+module Aliyun.OSS (
   Content
 , packageData
 , OSSHeader
@@ -9,9 +9,9 @@ module OSS (
 , canonicalize
 ) where
 
-import Auth
-import Config
-import HTTP
+import Aliyun.Auth
+import Aliyun.Config
+import Aliyun.HTTP
 
 import Network.URI
 import qualified Data.ByteString.Char8 as BC

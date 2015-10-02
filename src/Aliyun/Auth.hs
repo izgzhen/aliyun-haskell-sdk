@@ -1,4 +1,4 @@
-module Auth (
+module Aliyun.Auth (
   hmacSha1
 , base64
 , md5

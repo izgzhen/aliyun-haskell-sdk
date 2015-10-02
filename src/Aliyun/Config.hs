@@ -1,8 +1,8 @@
 -- Management user config file
 -- Work with AliyunCLI's dotfiles
 
-module Config where
-import Auth
+module Aliyun.Config where
+import Aliyun.Auth
 import Language.Haskell.TH
 import System.FilePath
 import Data.List

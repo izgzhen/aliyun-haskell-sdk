@@ -1,9 +1,9 @@
 {-# LANGUAGE RankNTypes #-}
 
-module Action where
+module Aliyun.Action where
 
-import HTTP
-import Config
+import Aliyun.HTTP
+import Aliyun.Config
 import qualified Data.ByteString.Lazy as BL
 
 class Action a where

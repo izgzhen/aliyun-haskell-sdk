@@ -1,4 +1,4 @@
-module HTTP (
+module Aliyun.HTTP (
   URL(..)
 , httpRequest
 , httpsRequest

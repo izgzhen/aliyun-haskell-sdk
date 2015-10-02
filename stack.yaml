@@ -1,0 +1,5 @@
+flags: {}
+packages:
+- '.'
+extra-deps: [Crypto-4.2.5.1, system-uuid-2.1.1]
+resolver: lts-3.7

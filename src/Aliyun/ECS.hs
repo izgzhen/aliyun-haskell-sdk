@@ -1,11 +1,11 @@
 -- Functionality Modules for ECS
 
-module ECS where
+module Aliyun.ECS where
 
-import Config
-import API
-import Action
-import HTTP
+import Aliyun.Config
+import Aliyun.API
+import Aliyun.Action
+import Aliyun.HTTP
 
 {-
     Three styles of requests:
