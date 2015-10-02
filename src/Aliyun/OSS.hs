@@ -4,10 +4,13 @@ module Aliyun.OSS (
   Content
 , packageData
 , getObjects
+, listObjects
 , OSSHeader
 , OSSResource(..)
 , SubResource
 , canonicalize
+, putObject
+, deleteObject
 ) where
 
 import Aliyun.Auth
@@ -17,8 +20,9 @@ import Aliyun.HTTP
 import Network.URI
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString as B
-import Network.HTTP.Base
+import Network.HTTP.Base as NB
 import Network.HTTP.Headers
+import qualified Network.HTTP as H
 import Data.Char
 import Data.List
 import System.FilePath
@@ -155,3 +159,41 @@ getObjects region config verb ossheaders ossresource bucketName = do
     -- let Just uri = parseURI ("http://" ++ bucketName ++ ".oss-" ++ show region ++ ".aliyuncs.com")
 
     return (Request uri verb headers "")
+
+
+
+putObject obj config bucketName filename region = do
+    let ossHeaders = []
+    let ossresource = Bucket bucketName (Just (filename, []))
+    req <- packageData obj region config NB.PUT ossHeaders ossresource  bucketName
+    res <- Aliyun.HTTP.http req
+    return (H.getResponseBody res)
+
+deleteObject :: Config -> String -> String -> RegionId -> IO (BC.ByteString)
+deleteObject config bucketName filename region = do
+    let ossHeaders = []
+    let ossresource = Bucket bucketName (Just (filename, []))
+    req <- getObjects region config DELETE ossHeaders ossresource bucketName
+    res <- Aliyun.HTTP.http req
+    return $ BC.pack (show res)
+
+listObjects :: Config -> String -> RegionId -> IO [String]
+listObjects config bucketName region = do
+    let ossHeaders = []
+    let ossresource = Bucket bucketName Nothing
+    req <- getObjects region config GET ossHeaders ossresource bucketName
+    res <- Aliyun.HTTP.http req
+    b <- H.getResponseBody res
+    return $ (scanKeys (BC.unpack b))
+
+scanKeys s = scanKeys' s False
+  where
+    keyStart = "Key>"
+    scanKeys' "" _      = []
+    scanKeys' ('<':s) _ = if take (length keyStart) s == keyStart
+                            then scanKeys' (drop (length keyStart) s) True
+                            else scanKeys' s False
+    scanKeys' s True    = let (keyName, s') = span (/='<') s
+                          in  keyName : scanKeys' (tail s) False
+    scanKeys' s False   = scanKeys' (tail s) False
+

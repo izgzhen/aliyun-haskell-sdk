@@ -45,4 +45,4 @@ instance IsString HTTPDate where
                         Nothing -> defaultHTTPDate
 
 
-http req = H.simpleHTTP req >>= H.getResponseBody
+http req = H.simpleHTTP req
